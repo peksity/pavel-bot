@@ -442,13 +442,39 @@ client.on(Events.MessageCreate, async (message) => {
       }
     }
     
-    // Not LFG - delete
+    // Not LFG - delete and DM instructions
     try {
       await message.delete();
       const warning = await message.channel.send(
         `<@${message.author.id}> Kapitan, this channel is for LFG commands only! Use \`?cayo\` to start a heist.`
       );
       setTimeout(() => warning.delete().catch(() => {}), 10000);
+      
+      // DM the user with instructions
+      try {
+        const botCommandsChannel = message.guild.channels.cache.find(c => c.name === 'bot-commands');
+        await message.author.send({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('🏝️ Cayo LFG - Commands Only')
+              .setDescription(
+                `Kapitan! The **#cayo-lfg** channel is for heist commands only, not chat.\n\n` +
+                `**How to use:**\n` +
+                `1. Type \`?cayo\` to create a heist session\n` +
+                `2. Select your target (Pink Diamond is best!)\n` +
+                `3. Choose approach (Drainage Tunnel is fastest)\n` +
+                `4. Pick secondary loot priority\n` +
+                `5. Click "Start Recruiting" when ready\n` +
+                `6. Crew joins by clicking the button (max 4)\n\n` +
+                `${botCommandsChannel ? `For all bot commands, check <#${botCommandsChannel.id}>` : 'Check #bot-commands for all available commands.'}`
+              )
+              .setColor(0x00D4FF)
+              .setFooter({ text: 'Pavel - Heist Coordinator' })
+          ]
+        });
+      } catch (dmError) {
+        // DMs might be disabled
+      }
     } catch (e) {}
     return;
   }
