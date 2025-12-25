@@ -304,9 +304,13 @@ async function handleStart(interaction) {
   if (setup.data.voice) {
     try {
       const guild = interaction.guild;
-      const category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && (c.name.toLowerCase().includes('gta') || c.name.toLowerCase().includes('heist')));
+      // GTA category
+      let category = guild.channels.cache.get('1453304740619227249');
+      if (!category) {
+        category = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && (c.name.toLowerCase().includes('gta') || c.name.toLowerCase().includes('heist')));
+      }
       voiceChannel = await guild.channels.create({ name: `🎯 ${setup.hostUsername}'s Heist`, type: ChannelType.GuildVoice, parent: category?.id, userLimit: 4 });
-    } catch (e) {}
+    } catch (e) { console.error('Voice channel error:', e); }
   }
   
   const session = {
@@ -412,7 +416,7 @@ function createSessionControls(session) {
   if (session.status === 'recruiting') {
     row2.addComponents(new ButtonBuilder().setCustomId(`cayo_startrun_${session.id}`).setLabel('Start Heist').setStyle(ButtonStyle.Primary).setEmoji('🚀'));
   }
-  if (session.status === 'in_progress' && session.b2b) {
+  if (session.status === 'in_progress') {
     row2.addComponents(new ButtonBuilder().setCustomId(`cayo_done_${session.id}`).setLabel('Done').setStyle(ButtonStyle.Success).setEmoji('✅'));
   }
   row2.addComponents(new ButtonBuilder().setCustomId(`cayo_end_${session.id}`).setLabel('End').setStyle(ButtonStyle.Danger).setEmoji('⭕'));
@@ -497,17 +501,15 @@ async function handleDone(interaction) {
   if (!session) return interaction.reply({ content: '❌ Session ended.', ephemeral: true });
   if (interaction.user.id !== session.hostId) return interaction.reply({ content: '❌ Host only.', ephemeral: true });
   
-  session.heistCount++;
-  
+  session.status = 'completed';
   const payouts = calculatePayouts(session);
-  session.totalEarnings += payouts.afterFees;
   
   await updateSession(interaction.client, session);
   
   const channel = interaction.client.channels.cache.get(session.channelId);
-  await channel.send(`🎯 **HEIST #${session.heistCount} COMPLETE!** +$${(payouts.afterFees/1000000).toFixed(2)}M | Total: $${(session.totalEarnings/1000000).toFixed(2)}M`);
+  await channel.send(`🎯 **HEIST COMPLETE!** | Host: ~$${(payouts.hostCut/1000000).toFixed(2)}M | Crew: ~$${(payouts.crewCut/1000000).toFixed(2)}M each`);
   
-  await interaction.reply({ content: `✅ Heist #${session.heistCount} done! Total: $${(session.totalEarnings/1000000).toFixed(2)}M`, ephemeral: true });
+  await interaction.reply({ content: `✅ Heist marked complete! Press **End** to finish and delete voice channel.`, ephemeral: true });
 }
 
 async function handleEnd(interaction) {
