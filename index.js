@@ -558,14 +558,35 @@ client.on(Events.MessageCreate, async (message) => {
         return;
     }
     
-    // Allow ?cayo in GTA channels too
-    if ((command === 'cayo' || command === 'heist') && (channelName.includes('gta') || channelName.includes('los-santos'))) {
+    // CAYO COMMAND IN WRONG CHANNEL - Redirect to #cayo-lfg
+    if (command === 'cayo' || command === 'heist' || command === 'perico') {
       const lfgChannel = message.guild.channels.cache.find(c => c.name === 'cayo-lfg');
-      if (lfgChannel) {
-        await message.reply(`Kapitan! Head to <#${lfgChannel.id}> for heist planning, yes?`);
-      } else {
-        await advancedCayoLFG.createSession(message, client);
-      }
+      
+      // Reply in channel
+      await message.reply(`Kapitan! Wrong place! Head to ${lfgChannel ? `<#${lfgChannel.id}>` : '#cayo-lfg'} for heist planning, yes?`);
+      
+      // DM the user with instructions
+      try {
+        await message.author.send({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('🏝️ Cayo LFG - Wrong Channel!')
+              .setDescription(
+                `Kapitan! The \`?cayo\` command only works in the **#cayo-lfg** channel.\n\n` +
+                `**How to use:**\n` +
+                `1. Go to ${lfgChannel ? `<#${lfgChannel.id}>` : '#cayo-lfg'}\n` +
+                `2. Type \`?cayo\` to create a heist session\n` +
+                `3. Select your GTA version (PS5 Enhanced or PS4)\n` +
+                `4. Enter your PSN username\n` +
+                `5. Choose target, approach, and secondary\n` +
+                `6. Click "Start Recruiting" when ready\n\n` +
+                `⚠️ **Note:** PS5 Enhanced and PS4 versions are on DIFFERENT servers!`
+              )
+              .setColor(0x00D4FF)
+              .setFooter({ text: 'Pavel - Heist Coordinator' })
+          ]
+        });
+      } catch (dmError) {}
       return;
     }
   }
