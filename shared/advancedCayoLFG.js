@@ -504,10 +504,25 @@ async function handleDone(interaction) {
   session.status = 'completed';
   const payouts = calculatePayouts(session);
   
-  await updateSession(interaction.client, session);
-  
   const channel = interaction.client.channels.cache.get(session.channelId);
+  
+  // Delete old message
+  try {
+    const oldMsg = await channel.messages.fetch(session.messageId);
+    await oldMsg.delete();
+  } catch (e) {}
+  
+  // Send completion notification
   await channel.send(`🎯 **HEIST COMPLETE!** | Host: ~$${(payouts.hostCut/1000000).toFixed(2)}M | Crew: ~$${(payouts.crewCut/1000000).toFixed(2)}M each`);
+  
+  // Post new embed at bottom
+  const newMsg = await channel.send({
+    embeds: [createSessionEmbed(session)],
+    components: createSessionButtons(session)
+  });
+  
+  session.messageId = newMsg.id;
+  await updateSession(interaction.client, session);
   
   await interaction.reply({ content: `✅ Heist marked complete! Press **End** to finish and delete voice channel.`, ephemeral: true });
 }
