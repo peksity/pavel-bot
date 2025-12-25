@@ -387,15 +387,6 @@ client.on(Events.MessageCreate, async (message) => {
           `${rolesChannel ? `Head to <#${rolesChannel.id}> to get set up, yes?` : 'Go grab your role first!'}`
         );
         setTimeout(() => warning.delete().catch(() => {}), 15000);
-        
-        try {
-          await message.author.send(
-            `🚁 **Kapitan!** You tried to use the Cayo LFG but you're missing the required role.\n\n` +
-            `**Get your role here:** ${rolesChannel ? `https://discord.com/channels/${message.guild.id}/${rolesChannel.id}` : 'Check the roles channel in the server'}\n\n` +
-            `Once you have **Cayo Grinder** or **Los Santos Hustler**, you can use:\n` +
-            `• \`?cayo\` - Start a Cayo Perico heist crew`
-          );
-        } catch (e) {}
       } catch (e) {}
       return;
     }
@@ -461,32 +452,6 @@ client.on(Events.MessageCreate, async (message) => {
         `<@${message.author.id}> Kapitan, this channel is for LFG commands only! Use \`?cayo\` to start a heist.`
       );
       setTimeout(() => warning.delete().catch(() => {}), 10000);
-      
-      // DM the user with instructions
-      try {
-        const botCommandsChannel = message.guild.channels.cache.find(c => c.name === 'bot-commands');
-        await message.author.send({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle('🏝️ Cayo LFG - Commands Only')
-              .setDescription(
-                `Kapitan! The **#cayo-lfg** channel is for heist commands only, not chat.\n\n` +
-                `**How to use:**\n` +
-                `1. Type \`?cayo\` to create a heist session\n` +
-                `2. Select your target (Pink Diamond is best!)\n` +
-                `3. Choose approach (Drainage Tunnel is fastest)\n` +
-                `4. Pick secondary loot priority\n` +
-                `5. Click "Start Recruiting" when ready\n` +
-                `6. Crew joins by clicking the button (max 4)\n\n` +
-                `${botCommandsChannel ? `For all bot commands, check <#${botCommandsChannel.id}>` : 'Check #bot-commands for all available commands.'}`
-              )
-              .setColor(0x00D4FF)
-              .setFooter({ text: 'Pavel - Heist Coordinator' })
-          ]
-        });
-      } catch (dmError) {
-        // DMs might be disabled
-      }
     } catch (e) {}
     return;
   }
@@ -573,32 +538,7 @@ client.on(Events.MessageCreate, async (message) => {
     // CAYO COMMAND IN WRONG CHANNEL - Redirect to #cayo-lfg
     if (command === 'cayo' || command === 'heist' || command === 'perico') {
       const lfgChannel = message.guild.channels.cache.find(c => c.name === 'cayo-lfg');
-      
-      // Reply in channel
       await message.reply(`Kapitan! Wrong place! Head to ${lfgChannel ? `<#${lfgChannel.id}>` : '#cayo-lfg'} for heist planning, yes?`);
-      
-      // DM the user with instructions
-      try {
-        await message.author.send({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle('🏝️ Cayo LFG - Wrong Channel!')
-              .setDescription(
-                `Kapitan! The \`?cayo\` command only works in the **#cayo-lfg** channel.\n\n` +
-                `**How to use:**\n` +
-                `1. Go to ${lfgChannel ? `<#${lfgChannel.id}>` : '#cayo-lfg'}\n` +
-                `2. Type \`?cayo\` to create a heist session\n` +
-                `3. Select your GTA version (PS5 Enhanced or PS4)\n` +
-                `4. Enter your PSN username\n` +
-                `5. Choose target, approach, and secondary\n` +
-                `6. Click "Start Recruiting" when ready\n\n` +
-                `⚠️ **Note:** PS5 Enhanced and PS4 versions are on DIFFERENT servers!`
-              )
-              .setColor(0x00D4FF)
-              .setFooter({ text: 'Pavel - Heist Coordinator' })
-          ]
-        });
-      } catch (dmError) {}
       return;
     }
   }
