@@ -370,10 +370,10 @@ function createMainEmbed(session) {
   const crewSize = session.crew.length + 1;
   
   // Build crew list
-  let crewList = `1.👑 **${session.hostUsername}** (Host) \`${session.hostPsn}\`\n`;
+  let crewList = `1.👑 **${session.hostUsername}** (PSN: ${session.hostPsn})\n`;
   for (let i = 0; i < 3; i++) {
     if (session.crew[i]) {
-      crewList += `${i + 2}. ${session.crew[i].username} \`${session.crew[i].psn}\`\n`;
+      crewList += `${i + 2}. ${session.crew[i].username} (PSN: ${session.crew[i].psn})\n`;
     } else {
       crewList += `${i + 2}. 🟢 *Open*\n`;
     }
