@@ -754,7 +754,7 @@ async function handleStartRecruiting(interaction, setupId) {
   activeSessions.set(sessionId, session);
   
   // Cleanup setup
-  setupSessions.delete(setupId visibleId);
+  setupSessions.delete(setupId);
   
   // Update DM
   await interaction.update({
