@@ -51,6 +51,10 @@ const OTHER_BOT_IDS = [
 ].filter(Boolean);
 const ALLOWED_CHANNEL_IDS = process.env.ALLOWED_CHANNEL_IDS?.split(',').filter(Boolean) || [];
 
+// HIVEMIND - Shared Intelligence System
+let hiveMind = null;
+try { hiveMind = require('./shared/hiveMind'); } catch (e) { console.log('[PAVEL] HiveMind not found, using basic responses'); }
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAVEL'S PERSONALITY
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -249,40 +253,24 @@ function trackConversation(channelId, odId) {
 }
 
 async function checkShouldRespond(message) {
-  // NEVER respond in counting channel
-  if (message.channel.name === 'counting') return false;
-  
-  // NEVER respond in OTHER bots' talk-to channels
-  const channelName = message.channel.name;
-  if (channelName.startsWith('talk-to-') && channelName !== 'talk-to-pavel') return false;
-  
-  // Always respond in dedicated channel
-  if (channelName === 'talk-to-pavel') return true;
-  
-  // Continue active conversations
-  if (isInActiveConversation(message.channel.id, message.author.id)) return true;
-  
-  // Direct mentions
-  if (message.mentions.has(client.user)) return true;
-  
-  // Keyword triggers
-  const content = message.content.toLowerCase();
-  if (content.includes('pavel') || content.includes('kapitan') || content.includes('submarine') || content.includes('cayo') || content.includes('kosatka')) return true;
-  
-  // Skip log/staff channels
-  if (channelName.includes('lfg') || channelName.includes('log') || channelName.includes('staff')) return false;
-  
-  // FreeRoam decision
-  if (freeRoam) {
-    const decision = await freeRoam.shouldRespond(message);
-    if (decision.respond) return true;
+  // If HiveMind is available, use it for smart coordination
+  if (hiveMind) {
+    const decision = await hiveMind.shouldBotRespond(MY_BOT_ID, message, client);
+    if (decision.shouldRespond) {
+      console.log(`[PAVEL] Responding - reason: ${decision.reason}`);
+    }
+    return decision.shouldRespond;
   }
   
-  // Respond to other bots sometimes
-  if (isOtherBot(message.author.id)) return Math.random() < 0.35;
-  
-  // Random chance
-  return Math.random() < 0.20;
+  // Fallback: basic logic
+  const channelName = message.channel.name || '';
+  if (channelName === 'counting') return false;
+  if (channelName.includes('lfg')) return false;
+  if (channelName.startsWith('talk-to-') && channelName !== 'talk-to-pavel') return false;
+  if (channelName.includes('log') || channelName.includes('staff')) return false;
+  if (channelName === 'talk-to-pavel') return true;
+  if (message.mentions.has(client.user)) return true;
+  return false;
 }
 
 async function generateResponse(message) {
@@ -295,6 +283,22 @@ async function generateResponse(message) {
   try {
     await message.channel.sendTyping();
     
+    // Build context from HiveMind
+    let contextAdditions = '';
+    if (hiveMind) {
+      const mood = await hiveMind.getBotMood(MY_BOT_ID);
+      const moodPrompt = hiveMind.getMoodPrompt(mood);
+      if (moodPrompt) contextAdditions += `\n\nCURRENT MOOD: ${moodPrompt}`;
+      
+      const memoryContext = await hiveMind.buildMemoryContext(message, MY_BOT_ID);
+      if (memoryContext) contextAdditions += memoryContext;
+      
+      await hiveMind.trackUserActivity(message.author.id, message.author.username, message.guild?.id);
+      
+      const isRegular = await hiveMind.isRegularUser(message.author.id);
+      if (isRegular) contextAdditions += '\n\nThis user is a regular - you\'ve talked to them many times before.';
+    }
+    
     // Get intelligence context
     let intelligencePrompt = '';
     let ctx = null;
@@ -303,11 +307,13 @@ async function generateResponse(message) {
       intelligencePrompt = intelligence.buildPromptContext(ctx);
     }
     
+    const fullSystem = PAVEL_SYSTEM + contextAdditions + (intelligencePrompt ? '\n\n' + intelligencePrompt : '');
+    
     // Generate response
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 200,
-      system: PAVEL_SYSTEM + (intelligencePrompt ? '\n\n' + intelligencePrompt : ''),
+      system: fullSystem,
       messages: history
     });
     
@@ -329,6 +335,12 @@ async function generateResponse(message) {
     // Send reply
     const sent = await message.reply(reply);
     trackConversation(message.channel.id, odId);
+    
+    // Record in HiveMind
+    if (hiveMind) {
+      await hiveMind.recordBotSpoke(MY_BOT_ID, message.channel.id);
+      await hiveMind.storeInteraction(message.author.id, message.author.username, message.content, MY_BOT_ID, reply, message.channel.id);
+    }
     
     // Learning
     if (intelligence?.learning) {
