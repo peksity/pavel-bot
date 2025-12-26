@@ -51,6 +51,43 @@ const OTHER_BOT_IDS = [
 ].filter(Boolean);
 const ALLOWED_CHANNEL_IDS = process.env.ALLOWED_CHANNEL_IDS?.split(',').filter(Boolean) || [];
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVER LOCK & LICENSE SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+const AUTHORIZED_SERVERS = process.env.AUTHORIZED_SERVERS?.split(',') || [];
+const LICENSE_KEY = process.env.LICENSE_KEY || '';
+const LICENSE_SECRET = process.env.LICENSE_SECRET || 'UNPATCHED_METHOD_2024_SECURE';
+
+function generateLicenseHash(key) {
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(key + LICENSE_SECRET).digest('hex');
+}
+
+function validateLicense() {
+  if (!LICENSE_KEY) {
+    console.error('[PAVEL] ❌ LICENSE KEY MISSING - Bot will not operate');
+    return false;
+  }
+  const isMasterKey = LICENSE_KEY.startsWith('UNPATCHED-MASTER-');
+  const isOwnerKey = LICENSE_KEY === process.env.MASTER_LICENSE;
+  if (!isMasterKey && !isOwnerKey) {
+    console.error('[PAVEL] ❌ INVALID LICENSE KEY');
+    return false;
+  }
+  console.log('[PAVEL] ✅ License validated');
+  return true;
+}
+
+if (!validateLicense()) {
+  console.error('[PAVEL] Shutting down - invalid license');
+  process.exit(1);
+}
+
+function isAuthorizedServer(guildId) {
+  if (AUTHORIZED_SERVERS.length === 0) return true;
+  return AUTHORIZED_SERVERS.includes(guildId);
+}
+
 // HIVEMIND - Shared Intelligence System
 let hiveMind = null;
 try { hiveMind = require('./shared/hiveMind'); } catch (e) { console.log('[PAVEL] HiveMind not found, using basic responses'); }
@@ -371,6 +408,9 @@ client.on(Events.MessageCreate, async (message) => {
     await generateResponse(message);
     return;
   }
+  
+  // SERVER LOCK - Ignore unauthorized servers
+  if (!isAuthorizedServer(message.guild.id)) return;
   
   const content = message.content;
   const channelName = message.channel.name;
